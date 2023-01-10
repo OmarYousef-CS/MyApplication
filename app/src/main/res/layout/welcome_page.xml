@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             android:layout_width="match_parent"
+             android:layout_height="match_parent"
+             android:orientation="vertical"
+    android:background="@color/gray">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0.8"
+        android:src="@drawable/ic_baseline_bluetooth_24"
+        android:padding="50dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Welcome to BL chat\n lets ge permitions \n click on the button"
+        android:gravity="center"
+        android:background="@color/white_blue"
+        android:layout_marginLeft="40dp"
+        android:layout_marginRight="40dp"/>
+
+
+    <Button
+        android:id="@+id/permitionsBt"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="50dp"
+        android:background="@color/black"
+        android:text="Lets Start" />
+
+
+</LinearLayout>
