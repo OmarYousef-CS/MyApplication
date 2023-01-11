@@ -1,13 +1,18 @@
 package com.example.myapplication;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
+import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -16,9 +21,10 @@ public class ConnectAndChat extends AppCompatActivity {
     private String deviceName, macAddress;
     private TextView nameOfTheDevice;
     private BluetoothAdapter bluetoothAdapter;
+    Context context;
 
-    private final UUID UUID_CODE = UUID.fromString("41b1a5e3-320b-40ba-8bcf-7b1c1d7fe8ce");
-    private final String NAME = "BTChatApp";
+    private static final UUID UUID_CODE = UUID.fromString("41b1a5e3-320b-40ba-8bcf-7b1c1d7fe8ce");
+    private static final String NAME = "BTChatApp";
 
     private AcceptThread acceptThread;
     private ConnectThread connectThread;
@@ -27,6 +33,7 @@ public class ConnectAndChat extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_connect_and_chat);
+        context = this;
         init();
     }
 
@@ -35,12 +42,11 @@ public class ConnectAndChat extends AppCompatActivity {
         macAddress = getIntent().getStringExtra("MACAddress");
         nameOfTheDevice = findViewById(R.id.nameOfDeviceInChat);
         nameOfTheDevice.setText(deviceName);
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
-        acceptThread = new AcceptThread();
-        acceptThread.start();
-        connectThread = new ConnectThread();
-
-
+        BluetoothDevice device = bluetoothAdapter.getRemoteDevice(macAddress);
+        connectThread = new ConnectThread(device);
+        connectThread.start();
 
     }
 
@@ -51,6 +57,9 @@ public class ConnectAndChat extends AppCompatActivity {
 
             BluetoothServerSocket tmp = null;
             try {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    System.out.print("ERROR 58 LINE ******************");
+                }
                 tmp = bluetoothAdapter.listenUsingRfcommWithServiceRecord(NAME, UUID_CODE);
             } catch (IOException e) {
                 System.out.print("Socket's listen() method failed: " + e);
@@ -61,7 +70,7 @@ public class ConnectAndChat extends AppCompatActivity {
         public void run() {
             BluetoothSocket socket = null;
             // Keep listening until exception occurs or a socket is returned.
-            while (socket == null) {
+            while (true) {
                 try {
                     socket = mmServerSocket.accept();
                 } catch (IOException e) {
@@ -73,6 +82,8 @@ public class ConnectAndChat extends AppCompatActivity {
                     // A connection was accepted. Perform work associated with
                     // the connection in a separate thread.
                     //manageMyConnectedSocket(socket);
+                    System.out.println("CONNECTED *****************************");
+                    Toast.makeText(context, "device connected", Toast.LENGTH_SHORT).show();
                     try {
                         mmServerSocket.close();
                     } catch (IOException e) {
@@ -106,6 +117,9 @@ public class ConnectAndChat extends AppCompatActivity {
             try {
                 // Get a BluetoothSocket to connect with the given BluetoothDevice.
                 // MY_UUID is the app's UUID string, also used in the server code.
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    System.out.println("********** LINE 120 *************");
+                }
                 tmp = device.createRfcommSocketToServiceRecord(UUID_CODE);
             } catch (IOException e) {
                 System.out.print("Socket's create() method failed" + e);

@@ -38,12 +38,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void init() {
-        //checkPermissions();
+        checkPermissions();
         Button bt = findViewById(R.id.permitionsBt);
         bt.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                //checkPermissions();
+                checkPermissions();
                 Intent intent = new Intent(MainActivity.this, ListOfDevices.class);
                 startActivity(intent);
             }
