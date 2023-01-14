@@ -17,8 +17,10 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,6 +34,8 @@ public class ConnectAndChat extends AppCompatActivity {
     private String deviceName, macAddress;
     private TextView status;
     private EditText textEditForChat;
+    private ListView conversation;
+    private ArrayAdapter<String> conversationAdapter;
     private Button deviceListButton, sendMsgButton;
     private BluetoothAdapter bluetoothAdapter;
     Context context;
@@ -71,9 +75,7 @@ public class ConnectAndChat extends AppCompatActivity {
                     byte[] readMsg = (byte[]) message.obj;
                     String tempMessage = new String(readMsg,0, message.arg1);
                     // present the message on the application
-                    System.out.println("*****************************");
-                    System.out.println(tempMessage);
-                    System.out.println("*****************************");
+                    conversationAdapter.add(deviceName + ": " + tempMessage);
                     break;
                 case STATE_WRITE_MESSAGE:
                     break;
@@ -97,7 +99,12 @@ public class ConnectAndChat extends AppCompatActivity {
 
     private void init() {
         initButtons();
+        conversation = (ListView) findViewById(R.id.conversation);
         status = findViewById(R.id.statusOfConnection);
+
+        conversationAdapter = new ArrayAdapter<String>
+                (this, android.R.layout.simple_list_item_1);
+        conversation.setAdapter(conversationAdapter);
 
         deviceName = getIntent().getStringExtra("userName");
         macAddress = getIntent().getStringExtra("MACAddress");
@@ -114,6 +121,7 @@ public class ConnectAndChat extends AppCompatActivity {
             acceptThread = new AcceptThread();
             acceptThread.start();
         }
+
 
     }
 
@@ -135,6 +143,7 @@ public class ConnectAndChat extends AppCompatActivity {
             public void onClick(View view) {
                 String message = String.valueOf(textEditForChat.getText());
                 connectedThread.write(message.getBytes());
+                conversationAdapter.add("Me: " + message);
             }
         });
     }

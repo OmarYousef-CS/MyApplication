@@ -17,6 +17,7 @@
             android:layout_width="150dp"
             android:layout_height="wrap_content"
             android:text="find devices"
+            android:layout_alignParentLeft="true"
             android:layout_marginLeft="10dp" />
 
         <TextView
@@ -33,6 +34,18 @@
             android:textStyle="bold" />
     </RelativeLayout>
 
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="55dp"
+        android:layout_marginBottom="10dp">
+        <ListView
+            android:id="@+id/conversation"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/chatBackground" />
+
+    </RelativeLayout>
 
     <RelativeLayout
         android:layout_width="match_parent"
