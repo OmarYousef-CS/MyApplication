@@ -6,24 +6,48 @@
     android:layout_height="match_parent"
     tools:context=".ConnectAndChat">
 
-    <TextView
-        android:id="@+id/nameOfDeviceInChat"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="8dp"
-        android:background="@color/purple_200"/>
+
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true">
+        android:background="@color/gray">
+        <Button
+            android:id="@+id/findDeviceToConnect"
+            android:layout_width="150dp"
+            android:layout_height="wrap_content"
+            android:text="find devices"
+            android:layout_marginLeft="10dp" />
+
+        <TextView
+            android:id="@+id/statusOfConnection"
+            android:layout_width="250dp"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginBottom="10dp"
+            android:text="not connected"
+            android:textAlignment="center"
+            android:textStyle="bold" />
+    </RelativeLayout>
+
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:background="@color/gray">
 
         <EditText
+            android:id="@+id/textEditForChat"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginEnd="100dp" />
 
         <Button
+            android:id="@+id/sendMessageButton"
             android:layout_width="100dp"
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"

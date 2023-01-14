@@ -44,7 +44,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 checkPermissions();
-                Intent intent = new Intent(MainActivity.this, ListOfDevices.class);
+                Intent intent = new Intent(MainActivity.this, ConnectAndChat.class);
+                intent.putExtra("userName", "");
+                intent.putExtra("MACAddress", "");
                 startActivity(intent);
             }
         });
