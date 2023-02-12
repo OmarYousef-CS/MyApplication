@@ -7,6 +7,7 @@ import androidx.room.Query;
 
 import java.util.List;
 
+//frf
 @Dao
 public interface DeviceHistoryDao {
     @Query("SELECT * FROM devicehistory")
