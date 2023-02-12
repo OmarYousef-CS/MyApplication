@@ -51,6 +51,8 @@ public class ConnectAndChat extends AppCompatActivity {
     static final int STATE_READ_MESSAGE = 4;
     static final int STATE_WRITE_MESSAGE = 5;
     static final int STATE_LISTEN = 6;
+    static final int STATE_NOT_CONNECTED = 7;
+    static final int STATE_DISCONNECT = 8;
 
     // Bluetooth. Connect + Transfer data
     private AcceptThread acceptThread;
@@ -73,21 +75,28 @@ public class ConnectAndChat extends AppCompatActivity {
                     break;
                 case STATE_READ_MESSAGE:
                     byte[] readMsg = (byte[]) message.obj;
-                    String tempMessage = new String(readMsg,0, message.arg1);
+                    String tempMessage = new String(readMsg, 0, message.arg1);
                     // present the message on the application
                     conversationAdapter.add(deviceName + ": " + tempMessage);
                     break;
                 case STATE_WRITE_MESSAGE:
                     break;
                 case STATE_LISTEN:
-                    status.setText("Listining");
+                    status.setText("Listining...");
+                    break;
+                case STATE_NOT_CONNECTED:
+                    status.setText("not Connected");
+                    break;
+                case STATE_DISCONNECT:
+                    status.setText("Device Disconnected");
+                    connectAndListen();
                     break;
             }
             return false;
         }
     });
 
-    //===== Functions =====================================================
+    //===== Functions ===================================================== +
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -98,9 +107,11 @@ public class ConnectAndChat extends AppCompatActivity {
     }
 
     private void init() {
+
         initButtons();
         conversation = (ListView) findViewById(R.id.conversation);
         status = findViewById(R.id.statusOfConnection);
+        status.setText("Listining...");
 
         conversationAdapter = new ArrayAdapter<String>
                 (this, android.R.layout.simple_list_item_1);
@@ -108,21 +119,25 @@ public class ConnectAndChat extends AppCompatActivity {
 
         deviceName = getIntent().getStringExtra("userName");
         macAddress = getIntent().getStringExtra("MACAddress");
-        // connect as a server
+
+        // connect as a server ot listen as a client
+        connectAndListen();
+
+
+    }
+
+    private void connectAndListen () {
         if (deviceName != "" && macAddress.length() == 17) {
             BluetoothDevice device = bluetoothAdapter.getRemoteDevice(macAddress);
             status.setText(deviceName);
             // try to connect to device
             connectThread = new ConnectThread(device);
             connectThread.start();
-            status.setText("Connecting...");
-        }
-        else {  // be available for connection
+        } else {  // be available for connection
+            conversationAdapter.clear();
             acceptThread = new AcceptThread();
             acceptThread.start();
         }
-
-
     }
 
     private void initButtons() {
@@ -130,6 +145,7 @@ public class ConnectAndChat extends AppCompatActivity {
         sendMsgButton = findViewById(R.id.sendMessageButton);
         textEditForChat = findViewById(R.id.textEditForChat);
 
+        //Click event to connect to another device
         deviceListButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -138,12 +154,21 @@ public class ConnectAndChat extends AppCompatActivity {
             }
         });
 
+        //Click event to send message
         sendMsgButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 String message = String.valueOf(textEditForChat.getText());
-                connectedThread.write(message.getBytes());
-                conversationAdapter.add("Me: " + message);
+                try {
+                    connectedThread.write(message.getBytes());
+                    conversationAdapter.add("Me: " + message);
+                    textEditForChat.setText("");
+                } catch (Exception e) {
+                    Message messageForHandler = Message.obtain();
+                    messageForHandler.what = STATE_NOT_CONNECTED;
+                    handler.sendMessage(messageForHandler);
+                }
+
             }
         });
     }
@@ -182,9 +207,9 @@ public class ConnectAndChat extends AppCompatActivity {
             // Keep listening until exception occurs or a socket is returned.
             while (true) {
                 try {
-
+                    //set the status of the handler
                     Message message = Message.obtain();
-                    message.what = STATE_CONNECTING;
+                    message.what = STATE_LISTEN;
                     handler.sendMessage(message);
 
                     socket = mmServerSocket.accept();
@@ -201,9 +226,24 @@ public class ConnectAndChat extends AppCompatActivity {
                     // the connection in a separate thread.
                     //manageMyConnectedSocket(socket);
                     Message message = Message.obtain();
+                    message.what = STATE_CONNECTING;
+                    handler.sendMessage(message);
+
+                    //check permition
+                    if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                        System.out.println("************** LINE 207 **************");
+                    }
+
+                    //get device details
+                    deviceName = socket.getRemoteDevice().getName();
+                    macAddress = socket.getRemoteDevice().getAddress();
+
+                    //set handler status on connected
+                    message = Message.obtain();
                     message.what = STATE_CONNECTED;
                     handler.sendMessage(message);
 
+                    //open the sockets to send and receive messages
                     connectedThread = new ConnectedThread(socket);
                     connectedThread.start();
                     try {
@@ -243,6 +283,9 @@ public class ConnectAndChat extends AppCompatActivity {
                 }
                 tmp = device.createRfcommSocketToServiceRecord(UUID_CODE);
             } catch (IOException e) {
+                Message message = Message.obtain();
+                message.what = STATE_CONNECTION_FAILD;
+                handler.sendMessage(message);
                 System.out.print("Socket's create() method failed" + e);
             }
             mmSocket = tmp;
@@ -330,6 +373,9 @@ public class ConnectAndChat extends AppCompatActivity {
                             STATE_READ_MESSAGE, numBytes, -1, mmBuffer);
                     readMsg.sendToTarget();
                 } catch (IOException e) {
+                    Message message = Message.obtain();
+                    message.what = STATE_DISCONNECT;
+                    handler.sendMessage(message);
                     e.printStackTrace();
                     break;
                 }
@@ -345,6 +391,9 @@ public class ConnectAndChat extends AppCompatActivity {
                 Message writtenMsg = handler.obtainMessage(STATE_WRITE_MESSAGE, -1, -1, mmBuffer);
                 writtenMsg.sendToTarget();
             } catch (IOException e) {
+                Message message = Message.obtain();
+                message.what = STATE_DISCONNECT;
+                handler.sendMessage(message);
                 e.printStackTrace();
             }
         }

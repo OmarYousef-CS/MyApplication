@@ -102,7 +102,10 @@ public class ListOfDevices extends AppCompatActivity {
             String action = intent.getAction();
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                adapterAvailableDevices.add(device.getName() + "\n" + device.getAddress());
+                if(BluetoothDevice.BOND_BONDED != device.getBondState()) {
+                    adapterAvailableDevices.add(device.getName() + "\n" + device.getAddress());
+                }
+
             }
             else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 scanDevicesBar.setVisibility(View.GONE);

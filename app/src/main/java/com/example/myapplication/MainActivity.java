@@ -39,11 +39,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void init() {
         checkPermissions();
+        makeDeviceDiscoverAble();
         Button bt = findViewById(R.id.permitionsBt);
         bt.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                checkPermissions();
                 Intent intent = new Intent(MainActivity.this, ConnectAndChat.class);
                 intent.putExtra("userName", "");
                 intent.putExtra("MACAddress", "");
@@ -52,29 +52,28 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void makeDeviceDiscoverAble() {
+        int requestCode = 1;
+        Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+        discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
+        startActivityForResult(discoverableIntent, requestCode);
+    }
+
     private void checkPermissions() {
-        if (ContextCompat.checkSelfPermission(MainActivity.this,
-                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(MainActivity.this, "permition location true", Toast.LENGTH_SHORT).show();
-        } else {
+        if (!(ContextCompat.checkSelfPermission(MainActivity.this,
+                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)) {
             requestLocationPermissions();
         }
-        if (ContextCompat.checkSelfPermission(MainActivity.this,
-                Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
-
-        } else {
+        if (!(ContextCompat.checkSelfPermission(MainActivity.this,
+                Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED)) {
             requestBlEConnectPermissions();
         }
-        if (ContextCompat.checkSelfPermission(MainActivity.this,
-                Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED) {
-
-        } else {
+        if (!(ContextCompat.checkSelfPermission(MainActivity.this,
+                Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED)) {
             requestBlEScanPermissions();
         }
-        if (ContextCompat.checkSelfPermission(MainActivity.this,
-                Manifest.permission.BLUETOOTH_ADVERTISE) == PackageManager.PERMISSION_GRANTED) {
-
-        } else {
+        if (!(ContextCompat.checkSelfPermission(MainActivity.this,
+                Manifest.permission.BLUETOOTH_ADVERTISE) == PackageManager.PERMISSION_GRANTED)) {
             requestBlEAdvertisePermissions();
         }
     }
@@ -120,6 +119,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
     //BLUETOOTH_ADVERTISE
     private void requestBlEAdvertisePermissions() {
         if (ContextCompat.checkSelfPermission(MainActivity.this,
@@ -185,4 +185,5 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
 }
