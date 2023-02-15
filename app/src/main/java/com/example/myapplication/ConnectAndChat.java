@@ -3,6 +3,7 @@ package com.example.myapplication;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.room.Room;
 
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
@@ -27,6 +28,7 @@ import android.widget.Toast;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.List;
 import java.util.UUID;
 
 public class ConnectAndChat extends AppCompatActivity {
@@ -38,6 +40,7 @@ public class ConnectAndChat extends AppCompatActivity {
     private ArrayAdapter<String> conversationAdapter;
     private Button deviceListButton, sendMsgButton;
     private BluetoothAdapter bluetoothAdapter;
+    private Database database;
     Context context;
 
     // Addresses for the BT application
@@ -66,6 +69,7 @@ public class ConnectAndChat extends AppCompatActivity {
             switch (message.what) {
                 case STATE_CONNECTED:
                     status.setText(deviceName);
+                    checkingDB();
                     break;
                 case STATE_CONNECTING:
                     status.setText("Connecting...");
@@ -73,10 +77,12 @@ public class ConnectAndChat extends AppCompatActivity {
                 case STATE_CONNECTION_FAILD:
                     status.setText("Connection Failed");
                     break;
-                case STATE_READ_MESSAGE:
+                case STATE_READ_MESSAGE: //Receive the message
                     byte[] readMsg = (byte[]) message.obj;
                     String tempMessage = new String(readMsg, 0, message.arg1);
                     // present the message on the application
+                    database.deviceHistoryDao().insertAll(  //Add the message to DB
+                            new Messages(macAddress, deviceName + ": " + tempMessage));
                     conversationAdapter.add(deviceName + ": " + tempMessage);
                     break;
                 case STATE_WRITE_MESSAGE:
@@ -89,7 +95,6 @@ public class ConnectAndChat extends AppCompatActivity {
                     break;
                 case STATE_DISCONNECT:
                     status.setText("Device Disconnected");
-                    connectAndListen();
                     break;
             }
             return false;
@@ -107,7 +112,8 @@ public class ConnectAndChat extends AppCompatActivity {
     }
 
     private void init() {
-
+        database = Room.databaseBuilder(getApplicationContext(),
+                Database.class, "messages_database").allowMainThreadQueries().build();
         initButtons();
         conversation = (ListView) findViewById(R.id.conversation);
         status = findViewById(R.id.statusOfConnection);
@@ -122,7 +128,6 @@ public class ConnectAndChat extends AppCompatActivity {
 
         // connect as a server ot listen as a client
         connectAndListen();
-
 
     }
 
@@ -162,6 +167,8 @@ public class ConnectAndChat extends AppCompatActivity {
                 try {
                     connectedThread.write(message.getBytes());
                     conversationAdapter.add("Me: " + message);
+                    database.deviceHistoryDao().insertAll(  //Add the message to DB
+                            new Messages(macAddress, "Me: " + message));
                     textEditForChat.setText("");
                 } catch (Exception e) {
                     Message messageForHandler = Message.obtain();
@@ -182,6 +189,13 @@ public class ConnectAndChat extends AppCompatActivity {
             Toast.makeText(context, "Please Enable Bluetooth", Toast.LENGTH_SHORT).show();
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, 1);
+        }
+    }
+
+    private void checkingDB() {
+        List<Messages> chatHistory = database.deviceHistoryDao().messagesForMacAddress(macAddress);
+        for (int msg = 0; msg < chatHistory.size(); msg++) {
+            conversationAdapter.add(chatHistory.get(msg).getMessageText());
         }
     }
 
@@ -310,6 +324,7 @@ public class ConnectAndChat extends AppCompatActivity {
                 // Unable to connect; close the socket and return.
                 try {
                     mmSocket.close();
+                    System.out.println("*******************************320*************************");
                 } catch (IOException closeException) {
                     System.out.print("Could not close the client socket" + closeException);
                 }
@@ -407,5 +422,4 @@ public class ConnectAndChat extends AppCompatActivity {
             }
         }
     }
-
 }
