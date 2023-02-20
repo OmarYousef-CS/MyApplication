@@ -24,6 +24,8 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {

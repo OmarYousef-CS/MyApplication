@@ -16,7 +16,6 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -24,6 +23,9 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.example.myapplication.DBs.Database;
+import com.example.myapplication.DBs.Messages;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,7 +52,7 @@ public class ConnectAndChat extends AppCompatActivity {
     // Statics for the Handler
     static final int STATE_CONNECTED = 1;
     static final int STATE_CONNECTING = 2;
-    static final int STATE_CONNECTION_FAILD = 3;
+    static final int STATE_CONNECTION_FAILED = 3;
     static final int STATE_READ_MESSAGE = 4;
     static final int STATE_WRITE_MESSAGE = 5;
     static final int STATE_LISTEN = 6;
@@ -69,21 +71,25 @@ public class ConnectAndChat extends AppCompatActivity {
             switch (message.what) {
                 case STATE_CONNECTED:
                     status.setText(deviceName);
-                    checkingDB();
+                    try {
+                        checkingDB();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                     break;
                 case STATE_CONNECTING:
                     status.setText("Connecting...");
                     break;
-                case STATE_CONNECTION_FAILD:
+                case STATE_CONNECTION_FAILED:
                     status.setText("Connection Failed");
                     break;
                 case STATE_READ_MESSAGE: //Receive the message
-                    byte[] readMsg = (byte[]) message.obj;
-                    String tempMessage = new String(readMsg, 0, message.arg1);
-                    // present the message on the application
-                    database.deviceHistoryDao().insertAll(  //Add the message to DB
-                            new Messages(macAddress, deviceName + ": " + tempMessage));
-                    conversationAdapter.add(deviceName + ": " + tempMessage);
+                    try {
+                        String msg = saveMsgInDB(message, deviceName);
+                        conversationAdapter.add(deviceName + ": " + msg);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                     break;
                 case STATE_WRITE_MESSAGE:
                     break;
@@ -95,6 +101,9 @@ public class ConnectAndChat extends AppCompatActivity {
                     break;
                 case STATE_DISCONNECT:
                     status.setText("Device Disconnected");
+                    connectedThread.cancel();
+                    conversationAdapter.clear();
+                    connectAndListen();
                     break;
             }
             return false;
@@ -150,7 +159,7 @@ public class ConnectAndChat extends AppCompatActivity {
         sendMsgButton = findViewById(R.id.sendMessageButton);
         textEditForChat = findViewById(R.id.textEditForChat);
 
-        //Click event to connect to another device
+        // Click event to connect to another device
         deviceListButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -159,16 +168,16 @@ public class ConnectAndChat extends AppCompatActivity {
             }
         });
 
-        //Click event to send message
+        // Click event to send message
         sendMsgButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 String message = String.valueOf(textEditForChat.getText());
                 try {
                     connectedThread.write(message.getBytes());
+                    database.deviceHistoryDao().insertAll(new Messages(  // save msg to DB
+                            macAddress,CipherHelper.encrypt( "Me: " + message)));
                     conversationAdapter.add("Me: " + message);
-                    database.deviceHistoryDao().insertAll(  //Add the message to DB
-                            new Messages(macAddress, "Me: " + message));
                     textEditForChat.setText("");
                 } catch (Exception e) {
                     Message messageForHandler = Message.obtain();
@@ -192,11 +201,19 @@ public class ConnectAndChat extends AppCompatActivity {
         }
     }
 
-    private void checkingDB() {
+    private void checkingDB() throws Exception {
         List<Messages> chatHistory = database.deviceHistoryDao().messagesForMacAddress(macAddress);
         for (int msg = 0; msg < chatHistory.size(); msg++) {
-            conversationAdapter.add(chatHistory.get(msg).getMessageText());
+            conversationAdapter.add(CipherHelper.decrypt(chatHistory.get(msg).getMessageText()));
         }
+    }
+
+    private String saveMsgInDB(Message message, String device) throws Exception {
+        byte[] readMsg = (byte[]) message.obj;
+        String tempMessage = new String(readMsg, 0, message.arg1);
+        database.deviceHistoryDao().insertAll( new Messages(   //Add the encrypted message to DB
+                macAddress, CipherHelper.encrypt(device + ": " + tempMessage)));
+        return tempMessage;
     }
 
     private class AcceptThread extends Thread {
@@ -229,7 +246,7 @@ public class ConnectAndChat extends AppCompatActivity {
                     socket = mmServerSocket.accept();
                 } catch (IOException e) {
                     Message message = Message.obtain();
-                    message.what = STATE_CONNECTION_FAILD;
+                    message.what = STATE_CONNECTION_FAILED;
                     handler.sendMessage(message);
                     System.out.print("Socket's accept() method failed" + e);
                     break;
@@ -252,14 +269,15 @@ public class ConnectAndChat extends AppCompatActivity {
                     deviceName = socket.getRemoteDevice().getName();
                     macAddress = socket.getRemoteDevice().getAddress();
 
+                    //open the sockets to send and receive messages
+                    connectedThread = new ConnectedThread(socket);
+                    connectedThread.start();
+
                     //set handler status on connected
                     message = Message.obtain();
                     message.what = STATE_CONNECTED;
                     handler.sendMessage(message);
 
-                    //open the sockets to send and receive messages
-                    connectedThread = new ConnectedThread(socket);
-                    connectedThread.start();
                     try {
                         mmServerSocket.close();
                     } catch (IOException e) {
@@ -298,7 +316,7 @@ public class ConnectAndChat extends AppCompatActivity {
                 tmp = device.createRfcommSocketToServiceRecord(UUID_CODE);
             } catch (IOException e) {
                 Message message = Message.obtain();
-                message.what = STATE_CONNECTION_FAILD;
+                message.what = STATE_CONNECTION_FAILED;
                 handler.sendMessage(message);
                 System.out.print("Socket's create() method failed" + e);
             }
@@ -313,13 +331,14 @@ public class ConnectAndChat extends AppCompatActivity {
                 // Connect to the remote device through the socket. This call blocks
                 // until it succeeds or throws an exception.
                 mmSocket.connect();
-
+                //start the sockets
+                connectedThread = new ConnectedThread(mmSocket);
+                connectedThread.start();
+                //set handler status on connected
                 Message message = Message.obtain();
                 message.what = STATE_CONNECTED;
                 handler.sendMessage(message);
 
-                connectedThread = new ConnectedThread(mmSocket);
-                connectedThread.start();
             } catch (IOException connectException) {
                 // Unable to connect; close the socket and return.
                 try {
@@ -392,6 +411,7 @@ public class ConnectAndChat extends AppCompatActivity {
                     message.what = STATE_DISCONNECT;
                     handler.sendMessage(message);
                     e.printStackTrace();
+                    System.out.print(e.getMessage());
                     break;
                 }
             }
@@ -403,7 +423,8 @@ public class ConnectAndChat extends AppCompatActivity {
                 mmOutStream.write(bytes);
 
                 // Share the sent message with the UI activity.
-                Message writtenMsg = handler.obtainMessage(STATE_WRITE_MESSAGE, -1, -1, mmBuffer);
+                Message writtenMsg = handler.obtainMessage(
+                        STATE_WRITE_MESSAGE, -1, -1, mmBuffer);
                 writtenMsg.sendToTarget();
             } catch (IOException e) {
                 Message message = Message.obtain();
